@@ -1,0 +1,92 @@
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+
+entity top_basys3 is
+    port (
+        clk   : in  std_logic;
+        btnC  : in  std_logic;
+        btnU  : in  std_logic;
+        an    : out std_logic_vector(3 downto 0);
+        seg   : out std_logic_vector(6 downto 0);
+        led   : out std_logic_vector(3 downto 0)
+    );
+end top_basys3;
+
+architecture rtl of top_basys3 is
+    -- Clock dividido
+    signal clk50    : std_logic := '0';
+
+    signal AB_addr  : std_logic_vector(3 downto 0);
+    signal AB_rd    : std_logic;
+    signal A_data   : std_logic_vector(127 downto 0);
+    signal B_data   : std_logic_vector(127 downto 0);
+    signal sad_val  : std_logic_vector(15 downto 0);
+
+    component blk_mem_gen_0 is
+        port(clka  : in  std_logic;
+             addra : in  std_logic_vector(3 downto 0);
+             douta : out std_logic_vector(127 downto 0));
+    end component;
+
+    component blk_mem_gen_1 is
+        port(clka  : in  std_logic;
+             addra : in  std_logic_vector(3 downto 0);
+             douta : out std_logic_vector(127 downto 0));
+    end component;
+
+    component sad_top is
+        port(clk, rst, comece : in  std_logic;
+             A_data, B_data   : in  std_logic_vector(127 downto 0);
+             AB_addr          : out std_logic_vector(3 downto 0);
+             AB_rd            : out std_logic;
+             sad              : out std_logic_vector(15 downto 0));
+    end component;
+
+    component seg7 is
+        port(clk   : in  std_logic;
+             valor : in  std_logic_vector(15 downto 0);
+             an    : out std_logic_vector(3 downto 0);
+             seg   : out std_logic_vector(6 downto 0));
+    end component;
+
+begin
+    -- Divisor: 100 MHz -> 50 MHz
+    process(clk)
+    begin
+        if rising_edge(clk) then
+            clk50 <= not clk50;
+        end if;
+    end process;
+
+    u_romA: blk_mem_gen_0 port map(
+        clka  => clk50,
+        addra => AB_addr,
+        douta => A_data
+    );
+
+    u_romB: blk_mem_gen_1 port map(
+        clka  => clk50,
+        addra => AB_addr,
+        douta => B_data
+    );
+
+    u_sad: sad_top port map(
+        clk    => clk50,
+        rst    => btnC,
+        comece => btnU,
+        A_data => A_data,
+        B_data => B_data,
+        AB_addr => AB_addr,
+        AB_rd   => AB_rd,
+        sad     => sad_val
+    );
+
+    u_seg: seg7 port map(
+        clk   => clk50,
+        valor => sad_val,
+        an    => an,
+        seg   => seg
+    );
+
+    led <= AB_addr;
+end rtl;
