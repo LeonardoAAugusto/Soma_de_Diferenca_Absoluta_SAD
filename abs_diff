@@ -1,0 +1,18 @@
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+use IEEE.NUMERIC_STD.ALL;
+
+entity abs_diff is
+    port (
+        A, B : in  std_logic_vector(7 downto 0);
+        R    : out std_logic_vector(7 downto 0)
+    );
+end abs_diff;
+
+architecture rtl of abs_diff is
+    signal diff : signed(8 downto 0);
+begin
+    diff <= signed('0' & A) - signed('0' & B);
+    R <= std_logic_vector(diff(7 downto 0)) when diff >= 0
+         else std_logic_vector(-diff(7 downto 0));
+end rtl;
