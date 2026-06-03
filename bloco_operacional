@@ -1,0 +1,87 @@
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+use IEEE.NUMERIC_STD.ALL;
+
+entity bloco_operacional is
+    port (
+        clk, rst       : in  std_logic;
+        A_data, B_data : in  std_logic_vector(127 downto 0);
+        soma_ld        : in  std_logic;
+        soma_clr       : in  std_logic;
+        i_clr          : in  std_logic;
+        i_inc          : in  std_logic;
+        sad_reg_ld     : in  std_logic;
+        i_lt_16        : out std_logic;
+        AB_addr        : out std_logic_vector(3 downto 0);
+        sad            : out std_logic_vector(15 downto 0)
+    );
+end bloco_operacional;
+
+architecture rtl of bloco_operacional is
+    signal abs_vals  : std_logic_vector(127 downto 0);
+    signal soma_parc : std_logic_vector(15 downto 0);
+    signal soma_reg  : std_logic_vector(15 downto 0);
+    signal soma_nova : std_logic_vector(15 downto 0);
+    signal sad_reg   : std_logic_vector(15 downto 0);
+    signal i_cnt     : std_logic_vector(4 downto 0);  -- 5 bits: alcanca valor 16
+
+    component abs_diff is
+        port(A, B : in  std_logic_vector(7 downto 0);
+             R    : out std_logic_vector(7 downto 0));
+    end component;
+
+    component soma_arvore is
+        port(vals : in  std_logic_vector(127 downto 0);
+             soma : out std_logic_vector(15 downto 0));
+    end component;
+
+    component registrador is
+        generic(N : integer := 16);
+        port(clk, rst, load, clr : in  std_logic;
+             D : in  std_logic_vector(N-1 downto 0);
+             Q : out std_logic_vector(N-1 downto 0));
+    end component;
+
+    component contador is
+        generic(N : integer := 5);
+        port(clk, rst, clr, inc : in  std_logic;
+             Q : out std_logic_vector(N-1 downto 0));
+    end component;
+
+begin
+    -- 16 abs_diff em paralelo
+    gen_abs: for k in 0 to 15 generate
+        u_abs: abs_diff port map(
+            A => A_data(k*8+7 downto k*8),
+            B => B_data(k*8+7 downto k*8),
+            R => abs_vals(k*8+7 downto k*8)
+        );
+    end generate;
+
+    -- Arvore de somadores
+    u_arvore: soma_arvore port map(vals => abs_vals, soma => soma_parc);
+
+    -- Acumulador
+    soma_nova <= std_logic_vector(unsigned(soma_reg) + unsigned(soma_parc));
+
+    u_soma: registrador generic map(N => 16)
+        port map(clk => clk, rst => rst,
+                 load => soma_ld, clr => soma_clr,
+                 D => soma_nova, Q => soma_reg);
+
+    -- Registrador de saida
+    u_sad_reg: registrador generic map(N => 16)
+        port map(clk => clk, rst => rst,
+                 load => sad_reg_ld, clr => '0',
+                 D => soma_reg, Q => sad_reg);
+
+    -- Contador i (5 bits para detectar i=16)
+    u_cnt: contador generic map(N => 5)
+        port map(clk => clk, rst => rst,
+                 clr => i_clr, inc => i_inc,
+                 Q => i_cnt);
+
+    i_lt_16 <= '1' when unsigned(i_cnt) < 16 else '0';
+    AB_addr  <= i_cnt(3 downto 0);
+    sad      <= sad_reg;
+end rtl;
