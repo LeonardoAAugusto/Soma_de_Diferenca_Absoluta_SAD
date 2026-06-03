@@ -1,0 +1,46 @@
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+use IEEE.NUMERIC_STD.ALL;
+
+entity soma_arvore is
+    port (
+        vals : in  std_logic_vector(127 downto 0); -- 16 x 8 bits
+        soma : out std_logic_vector(15 downto 0)
+    );
+end soma_arvore;
+
+architecture rtl of soma_arvore is
+    type t_nivel0 is array(0 to 15) of unsigned(7 downto 0);
+    type t_nivel1 is array(0 to 7)  of unsigned(8 downto 0);
+    type t_nivel2 is array(0 to 3)  of unsigned(9 downto 0);
+    type t_nivel3 is array(0 to 1)  of unsigned(10 downto 0);
+    signal n0 : t_nivel0;
+    signal n1 : t_nivel1;
+    signal n2 : t_nivel2;
+    signal n3 : t_nivel3;
+    signal n4 : unsigned(11 downto 0);
+begin
+    -- Carrega os 16 bytes
+    gen: for k in 0 to 15 generate
+        n0(k) <= unsigned(vals(k*8+7 downto k*8));
+    end generate;
+
+    -- Nível 1: 8 somas de pares
+    gen1: for k in 0 to 7 generate
+        n1(k) <= ('0' & n0(2*k)) + ('0' & n0(2*k+1));
+    end generate;
+
+    -- Nível 2: 4 somas
+    gen2: for k in 0 to 3 generate
+        n2(k) <= ('0' & n1(2*k)) + ('0' & n1(2*k+1));
+    end generate;
+
+    -- Nível 3: 2 somas
+    gen3: for k in 0 to 1 generate
+        n3(k) <= ('0' & n2(2*k)) + ('0' & n2(2*k+1));
+    end generate;
+
+    -- Nível 4: resultado
+    n4 <= ('0' & n3(0)) + ('0' & n3(1));
+    soma <= std_logic_vector(resize(n4, 16));
+end rtl;
