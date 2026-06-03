@@ -1,0 +1,50 @@
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+ 
+entity fsm_controle is
+  port (
+        clk, rst, comece : in  std_logic;
+        i_lt_16          : in  std_logic;
+        soma_clr         : out std_logic;
+        soma_ld          : out std_logic;
+        i_clr            : out std_logic;
+        i_inc            : out std_logic;
+        AB_rd            : out std_logic;
+        sad_reg_ld       : out std_logic
+    );
+end fsm_controle;
+ 
+architecture rtl of fsm_controle is
+    -- S3a: apresenta endereco a ROM e aguarda 1 ciclo
+    -- S3b: dado da ROM valido, acumula soma e incrementa i
+    type estado_t is (S0, S1, S2, S3a, S3b, S4);
+    signal estado : estado_t;
+begin
+    process(clk, rst)
+    begin
+        if rst = '1' then
+            estado <= S0;
+        elsif rising_edge(clk) then
+            case estado is
+                when S0  =>
+                    if comece = '1' then estado <= S1; end if;
+                when S1  => estado <= S2;
+                when S2  =>
+                    if i_lt_16 = '1' then estado <= S3a;
+                    else                  estado <= S4;  end if;
+                when S3a => estado <= S3b;
+                when S3b => estado <= S2;
+                when S4  => estado <= S0;
+            end case;
+        end if;
+    end process;
+ 
+    -- Saidas Moore
+    soma_clr   <= '1' when estado = S1  else '0';
+    i_clr      <= '1' when estado = S1  else '0';
+    AB_rd      <= '1' when estado = S3a else '0';  -- endereco apresentado em S3a
+    soma_ld    <= '1' when estado = S3b else '0';  -- dado valido em S3b
+    i_inc      <= '1' when estado = S3b else '0';
+    sad_reg_ld <= '1' when estado = S4  else '0';
+end rtl;
+ 
