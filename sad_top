@@ -1,0 +1,55 @@
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+
+entity sad_top is
+    port (
+        clk, rst, comece : in  std_logic;
+        A_data, B_data   : in  std_logic_vector(127 downto 0);
+        AB_addr          : out std_logic_vector(3 downto 0);
+        AB_rd            : out std_logic;
+        sad              : out std_logic_vector(15 downto 0)
+    );
+end sad_top;
+
+architecture rtl of sad_top is
+    signal soma_clr, soma_ld, i_clr, i_inc : std_logic;
+    signal sad_reg_ld, i_lt_16             : std_logic;
+    signal AB_rd_s                         : std_logic;
+
+    component fsm_controle is
+        port(clk, rst, comece : in std_logic;
+             i_lt_16 : in std_logic;
+             soma_clr, soma_ld, i_clr, i_inc : out std_logic;
+             AB_rd, sad_reg_ld : out std_logic);
+    end component;
+
+    component bloco_operacional is
+        port(clk, rst : in std_logic;
+             A_data, B_data : in std_logic_vector(127 downto 0);
+             soma_ld, soma_clr, i_clr, i_inc, sad_reg_ld : in std_logic;
+             i_lt_16 : out std_logic;
+             AB_addr : out std_logic_vector(3 downto 0);
+             sad : out std_logic_vector(15 downto 0));
+    end component;
+begin
+    u_fsm: fsm_controle port map(
+        clk => clk, rst => rst, comece => comece,
+        i_lt_16 => i_lt_16,
+        soma_clr => soma_clr, soma_ld => soma_ld,
+        i_clr => i_clr, i_inc => i_inc,
+        AB_rd => AB_rd_s, sad_reg_ld => sad_reg_ld
+    );
+
+    u_op: bloco_operacional port map(
+        clk => clk, rst => rst,
+        A_data => A_data, B_data => B_data,
+        soma_ld => soma_ld, soma_clr => soma_clr,
+        i_clr => i_clr, i_inc => i_inc,
+        sad_reg_ld => sad_reg_ld,
+        i_lt_16 => i_lt_16,
+        AB_addr => AB_addr,
+        sad => sad
+    );
+
+    AB_rd <= AB_rd_s;
+end rtl;
